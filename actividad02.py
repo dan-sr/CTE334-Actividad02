@@ -2,7 +2,81 @@
 """CTE-334 - Actividad 02: Distancia y dirección con interfaz gráfica."""
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
+from math import sin, cos, sqrt, radians, asin
+
+RADIO = 6371.0088  # radio medio de la Tierra en km
+
+
+# ---------------------------------------------------------------------------
+# Funciones de cálculo (Actividad 01): no dependen de widgets
+# ---------------------------------------------------------------------------
+
+def validar_coordenadas(latitud, longitud):
+    """Retorna True si la latitud está entre -90 y 90 y la longitud entre -180 y 180."""
+    return -90 <= latitud <= 90 and -180 <= longitud <= 180
+
+
+def calcular_distancia(lat1, lon1, lat2, lon2):
+    """Calcula la distancia Haversine entre dos puntos y la retorna en km."""
+    phi1, phi2 = radians(lat1), radians(lat2)
+    delta_phi = radians(lat2 - lat1)
+    delta_lambda = radians(lon2 - lon1)
+
+    a = sin(delta_phi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(delta_lambda / 2) ** 2
+    a = min(1.0, a)  # evita errores de redondeo que sacarían a 'a' de [0, 1]
+    return 2 * RADIO * asin(sqrt(a))
+
+
+def determinar_direccion(lat_a, lon_a, lat_b, lon_b):
+    """Retorna la dirección general del punto B respecto al punto A."""
+    if lat_b > lat_a:
+        vertical = "Nor"
+    elif lat_b < lat_a:
+        vertical = "Sur"
+    else:
+        vertical = ""
+
+    if lon_b > lon_a:
+        horizontal = "este"
+    elif lon_b < lon_a:
+        horizontal = "oeste"
+    else:
+        horizontal = ""
+
+    if not vertical and not horizontal:
+        return "Misma ubicación"
+    if not horizontal:
+        return "Norte" if vertical == "Nor" else "Sur"
+    if not vertical:
+        return horizontal.capitalize()
+    return vertical + horizontal  # Noreste, Noroeste, Sureste, Suroeste
+
+
+def clasificar_distancia(distancia):
+    """Clasifica la distancia (en km) según los intervalos establecidos."""
+    if distancia < 1:
+        return "Muy cercano"
+    elif distancia < 10:
+        return "Cercano"
+    elif distancia < 50:
+        return "Distancia media"
+    return "Distante"
+
+
+def formatear_resultado(distancia, direccion, clasificacion):
+    """Arma el informe con el mismo formato de la Actividad 01."""
+    linea = "-" * 40
+    return (
+        f"{linea}\n"
+        "RESULTADO DEL ANÁLISIS\n"
+        f"{linea}\n"
+        f"Distancia: {distancia:.3f} km\n"
+        f"Dirección: {direccion}\n"
+        f"Clasificación: {clasificacion}\n"
+        f"{linea}"
+    )
+
 
 # ---------------------------------------------------------------------------
 # Funciones de la interfaz
@@ -18,7 +92,29 @@ def mostrar_resultado(texto):
 
 def ejecutar_calculo(event=None):
     """Recupera, valida y procesa los datos al presionar Calcular."""
-    pass  # pendiente: conectar con los cálculos
+    textos = [entrada.get() for entrada in entradas]
+
+    try:
+        lat_a, lon_a, lat_b, lon_b = [float(texto) for texto in textos]
+    except ValueError:
+        messagebox.showerror(
+            "Entrada no numérica",
+            "Todos los campos deben contener valores numéricos.",
+        )
+        return
+
+    if not (validar_coordenadas(lat_a, lon_a) and validar_coordenadas(lat_b, lon_b)):
+        messagebox.showerror(
+            "Coordenada fuera de rango",
+            "La latitud debe estar entre -90 y 90 grados y la longitud "
+            "entre -180 y 180 grados.",
+        )
+        return
+
+    distancia = calcular_distancia(lat_a, lon_a, lat_b, lon_b)
+    direccion = determinar_direccion(lat_a, lon_a, lat_b, lon_b)
+    clasificacion = clasificar_distancia(distancia)
+    mostrar_resultado(formatear_resultado(distancia, direccion, clasificacion))
 
 
 def limpiar():
